@@ -74,22 +74,30 @@ public class MLKitBarcodeScanner extends CordovaPlugin {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == RC_BARCODE_CAPTURE) {
-            if (resultCode == CommonStatusCodes.SUCCESS) {
-                if (data != null) {
-                    Integer barcodeFormat = data.getIntExtra(CaptureActivity.BarcodeFormat, 0);
-                    Integer barcodeType = data.getIntExtra(CaptureActivity.BarcodeType, 0);
-                    String barcodeValue = data.getStringExtra(CaptureActivity.BarcodeValue);
-                    JSONArray result = new JSONArray();
-                    result.put(barcodeValue);
-                    result.put(barcodeFormat);
-                    result.put(barcodeType);
-                    _CallbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
-
-                    Log.d("MLKitBarcodeScanner", "Barcode read: " + barcodeValue);
-                }
-            } else {
-                String err = data.getStringExtra("err");
+            if (resultCode == CommonStatusCodes.SUCCESS && data != null) {
+                Integer barcodeFormat = data.getIntExtra(CaptureActivity.BarcodeFormat, 0);
+                Integer barcodeType = data.getIntExtra(CaptureActivity.BarcodeType, 0);
+                String barcodeValue = data.getStringExtra(CaptureActivity.BarcodeValue);
                 JSONArray result = new JSONArray();
+                result.put(barcodeValue);
+                result.put(barcodeFormat);
+                result.put(barcodeType);
+                _CallbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+
+                Log.d("MLKitBarcodeScanner", "Barcode read: " + barcodeValue);
+            } else {
+                JSONArray result = new JSONArray();
+                String err = "USER_CANCELLED";
+                if (data != null) {
+                    String providedError = data.getStringExtra("err");
+                    if (providedError != null && !providedError.isEmpty()) {
+                        err = providedError;
+                    } else if (resultCode == CommonStatusCodes.SUCCESS) {
+                        err = "NO_BARCODE_DATA";
+                    }
+                } else if (resultCode != CommonStatusCodes.CANCELED) {
+                    err = "SCANNER_ERROR";
+                }
                 result.put(err);
                 result.put("");
                 result.put("");
