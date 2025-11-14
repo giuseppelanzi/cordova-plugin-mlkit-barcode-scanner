@@ -86,6 +86,24 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
 
     private ScaleGestureDetector _ScaleGestureDetector;
     private GestureDetector _GestureDetector;
+    private boolean resultDelivered = false;
+
+    private void deliverResult(int resultCode, Intent data, boolean finishActivity) {
+        if (resultDelivered) {
+            return;
+        }
+        resultDelivered = true;
+        setResult(resultCode, data);
+        if (finishActivity) {
+            finish();
+        }
+    }
+
+    private void deliverCancellation(String reason, boolean finishActivity) {
+        Intent data = new Intent();
+        data.putExtra("err", reason);
+        deliverResult(CommonStatusCodes.CANCELED, data, finishActivity);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -213,7 +231,7 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
 
         DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                finish();
+                deliverCancellation("PERMISSION_DENIED", true);
             }
         };
 
@@ -258,6 +276,20 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
     protected void onResume() {
         super.onResume();
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (!resultDelivered && isFinishing()) {
+            deliverCancellation("USER_CANCELLED", false);
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        deliverCancellation("USER_CANCELLED", false);
+        super.onBackPressed();
     }
 
     void startCamera() {
@@ -367,9 +399,8 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
                                 data.putExtra(BarcodeFormat, barcode.getFormat());
                                 data.putExtra(BarcodeType, barcode.getValueType());
                                 data.putExtra(BarcodeValue, barcode.getRawValue());
-                                setResult(CommonStatusCodes.SUCCESS, data);
-                                finish();
-
+                                deliverResult(CommonStatusCodes.SUCCESS, data, true);
+                                break;
                             }
                         }
                     }
