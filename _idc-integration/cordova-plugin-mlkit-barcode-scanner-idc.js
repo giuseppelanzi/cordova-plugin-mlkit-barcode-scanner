@@ -21,12 +21,12 @@ Plugin.MLKitBarcodeScanner.init = function () {
  * IDC app remains idle until the scan is confirmed / canceled, both conditions lead to the callback.
  * @param {Object} req - request object
  */
-Plugin.MLKitBarcodeScanner.scan = function (options, req)
+Plugin.MLKitBarcodeScanner.scan = function (req)
 {
   try {
-    cordova.plugins.mlkit.barcodeScanner.scan(options,
+    cordova.plugins.mlkit.barcodeScanner.scan(req.params.options,
       function (result)  {
-          req.setResult(result); 
+        req.setResult(result); 
       },
       function (error) { 
         req.setError(error); 
