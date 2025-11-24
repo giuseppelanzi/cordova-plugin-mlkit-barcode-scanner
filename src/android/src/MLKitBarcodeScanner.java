@@ -1,6 +1,6 @@
 package com.mobisys.cordova.plugins.mlkit.barcode.scanner;
 
-import android.content.Context;
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,41 +31,28 @@ public class MLKitBarcodeScanner extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException
     {
-        Context context = cordova.getActivity().getApplicationContext();
         _CallbackContext = callbackContext;
 
         if (action.equals("startScan")) {
-            class OneShotTask implements Runnable {
-                private final Context context;
-                private final JSONArray args;
-
-                private OneShotTask(Context ctx, JSONArray as) {
-                    context = ctx;
-                    args = as;
-                }
-
-                public void run() {
-                    openNewActivity(context, args);
-                }
-            }
-            Thread t = new Thread(new OneShotTask(context, args));
-            t.start();
+            openNewActivity(args);
             return true;
         }
         return false;
     }
 
-    private void openNewActivity(Context context, JSONArray args) {
-        Intent intent = new Intent(context, CaptureActivity.class);
+    private void openNewActivity(JSONArray args) {
+        Activity activity = this.cordova.getActivity();
+        Intent intent = new Intent(activity, CaptureActivity.class);
         intent.putExtra("DetectionTypes", args.optInt(0, 1234));
         intent.putExtra("DetectorSize", args.optDouble(1, 0.5));
 
         //intent.putExtra("ViewFinderWidth", args.optDouble(1, .5));
-       // intent.putExtra("ViewFinderHeight", args.optDouble(2, .7));
+        // intent.putExtra("ViewFinderHeight", args.optDouble(2, .7));
 
-        this.cordova.setActivityResultCallback(this);
-        this.cordova.startActivityForResult(this, intent, RC_BARCODE_CAPTURE);
-
+        activity.runOnUiThread(() -> {
+            this.cordova.setActivityResultCallback(this);
+            this.cordova.startActivityForResult(this, intent, RC_BARCODE_CAPTURE);
+        });
     }
 
 
@@ -74,6 +61,13 @@ public class MLKitBarcodeScanner extends CordovaPlugin {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == RC_BARCODE_CAPTURE) {
+            if (data == null && (resultCode == CommonStatusCodes.CANCELED || resultCode == Activity.RESULT_CANCELED)) {
+                // Ignore spurious cancel results that can arrive immediately when starting a scan
+                return;
+            }
+            boolean cancelled = resultCode == CommonStatusCodes.CANCELED
+                    || resultCode == Activity.RESULT_CANCELED;
+
             if (resultCode == CommonStatusCodes.SUCCESS && data != null) {
                 Integer barcodeFormat = data.getIntExtra(CaptureActivity.BarcodeFormat, 0);
                 Integer barcodeType = data.getIntExtra(CaptureActivity.BarcodeType, 0);
@@ -95,7 +89,7 @@ public class MLKitBarcodeScanner extends CordovaPlugin {
                     } else if (resultCode == CommonStatusCodes.SUCCESS) {
                         err = "NO_BARCODE_DATA";
                     }
-                } else if (resultCode != CommonStatusCodes.CANCELED) {
+                } else if (!cancelled) {
                     err = "SCANNER_ERROR";
                 }
                 result.put(err);
